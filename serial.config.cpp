@@ -1,5 +1,4 @@
 
-#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <stdio.h>
 #include <conio.h>
@@ -13,27 +12,27 @@ bool wcsstr( wcs_c opt, std::initializer_list<wcs_c> valid ) {
 }
 
 struct config_comm_s {
-	wcs_t file;
-	wcs_c log;
+	tcs_t file;
+	tcs_c log;
 	DWORD baud;
 	BYTE  bytesize;
 	BYTE  parity;
 	BYTE  stopbits;
-} comm = { L"COM2", NULL, CBR_115200, 8, NOPARITY, ONESTOPBIT };
+} comm = { _T("COM2"), NULL, CBR_115200, 8, NOPARITY, ONESTOPBIT };
 
-void options_baud( wcs_c s ) {
+void options_baud( const char *s ) {
 	if( s[0] == L':' ) s++;
-	if( wcslen(s) <= 1 ) return;
-	else if(wcsstr(s, L"mx" )) comm.baud = CBR_38400;
-	else if(wcsstr(s, L"vic")) comm.baud = CBR_115200;
-	else if( int val = _wtoi(s) ) {
+	if( _tcslen(s) <= 1 ) return;
+	else if(_tcsstr(s, "mx" )) comm.baud = CBR_38400;
+	else if(_tcsstr(s, "vic")) comm.baud = CBR_115200;
+	else if( int val = _ttoi(s) ) {
 		int validCBR[] = { CBR_110, CBR_300, CBR_600, CBR_1200, CBR_2400, CBR_4800, CBR_9600, CBR_14400,
 			CBR_19200, CBR_38400, CBR_56000, CBR_57600, CBR_115200, CBR_128000, CBR_256000 };
 		for( int i : validCBR ) if( i == val ) { comm.baud = val; return; }
 		goto invalid_baud;
 	} else { invalid_baud:
 	// Invalid Baud-Rate
-	fprintf(stderr, "Invalid baud rate: %ls\n", s);
+	fprintf(stderr, "Invalid baud rate: %s\n", s);
 	exit(EXIT_FAILURE);
 	}
 }
@@ -59,4 +58,33 @@ void options_stopbits( wcs_c s ) {
 }
 void options_log( wcs_c s ) {
 	comm.log = ( s[0] == L':' ) ? s+1 : s;
+}
+
+int main_args( int argc, char *argv[] ) {
+
+	str_t s;
+	for( int opt = 1; opt < argc; opt++ ) {
+		if( argv[opt][0] != '-' ) {
+
+		} else switch( s = argv[opt] + 2, (argv[opt][0] == '-') ? argv[opt][1] : 0 ) {
+			#define _opt(ch, str, uvar, def, ex )\
+				case L ## ch: options_##uvar (s); break;
+			#include "options.h"
+		case 'h': default:
+			fprintf(stderr, "Usage: %ls [-flags] [com-port filename]\n", argv[0]);
+			#define _opt(ch, str, uvar, def, ex ) \
+				fprintf(stderr, "  -%c | --"str" - "def"\n    ex:'"ex"'\n",ch);
+			#include "options.h"
+			exit(EXIT_FAILURE);
+			break;
+		case '-': // Long Options
+			if(wcslen(s) <= 1) break;
+			#define _opt(ch, str, uvar, def, ex ) \
+				else if(0== wcscmp(s, L ## str)) options_##uvar (s);
+			#include "options.h"
+			break;
+		case  0 : // Com Port
+			comm.file = argv[opt];
+		}
+	}
 }

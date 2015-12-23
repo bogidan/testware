@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="serial.cpp" />
+    <ClCompile Include="serial.config.cpp" />
+    <ClCompile Include="main_iup.cpp" />
+    <ClCompile Include="main_nana.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="main_fltk.cpp" />
+    <ClCompile Include="enumser\enumser.cpp">
+      <Filter>enumser</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="bob.h" />
+    <ClInclude Include="serial.h" />
+    <ClInclude Include="options.h" />
+    <ClInclude Include="enumser\enumser.h">
+      <Filter>enumser</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libs.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="enumser">
+      <UniqueIdentifier>{940c58f2-3b8d-49ea-bd35-035f90de46b9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

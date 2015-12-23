@@ -1,80 +1,29 @@
 
-#include <Windows.h>
-#include <stdlib.h>
-#include <iup.h>
-#pragma comment(lib, "iup.lib")
-#pragma comment(lib, "comctl32.lib")
+#include "stdafx.h"
+#include <stdarg.h>
 
 #include "bob.h"
-#include <stdio.h>
 
-#include <chrono>
-std::chrono::seconds check(1);
+int main_iup ( int argc, char *argv[] );
+int main_nana( int argc, char *argv[] );
+int main_fltk( int argc, char *argv[] );
 
 
-namespace bob {
-	struct time {
-		u32 prev;
-		time() { prev = GetTickCount(); };
-		template <u32 elapsed>
-		bool elapsed() {
-			u32 curr = GetTickCount();
-			s32 diff = (curr - prev) - elapsed;
-			if( diff < 0 ) return false;
-			prev = curr + diff;
-			return true;
-		}
-	};
+int __cdecl _eprintf(const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+
+	auto r = vprintf(fmt, args);
+
+	va_end(args);
+	return r;
 }
-
-Ihandle *gtext = NULL;
-
-int proc_idle( Ihandle *ih ) { // Icallback
-	// Check Buffers
+print_ft eprintf = _eprintf;
 
 
-
-	return 0;
-};
-
+#include <utility>
 int main( int argc, char *argv[] ) {
-	Ihandle *dlg, *multitext, *menubar;
-
-	IupOpen(&argc, &argv);
-
-	gtext = multitext = IupText(NULL);
-	IupSetAttribute(multitext, "MULTILINE", "YES");
-	IupSetAttribute(multitext, "EXPAND", "YES");
-	IupSetAttribute(multitext, "BORDER","NO");
-	IupSetAttribute(multitext, "BGCOLOR","#111111");
-	IupSetAttribute(multitext, "FGCOLOR","#DDDDDD");
-	IupSetAttribute(multitext, "FONT","Consolas 12");
-	IupSetAttribute(multitext, "READONLY","YES");
-	IupSetAttribute(multitext, "APPENDNEWLINE","YES");
-
-	IupSetFunction("IDLE_ACTION", proc_idle);
-
-	menubar = IupMenu(
-		IupSubmenu("COM", IupMenu(
-			IupItem("Set Rate", NULL),
-			IupSeparator(),
-			IupItem("Logging", NULL),
-			NULL)),
-		IupSubmenu("Heater", IupMenu(
-			IupItem("Auto", NULL),
-			IupItem("Enable", NULL),
-			NULL)),
-		IupItem("Send", NULL),
-		NULL);
-
-	dlg = IupDialog(multitext);
-	IupSetAttribute(dlg, "TITLE", "MX Testware");
-	IupSetAttribute(dlg, "SIZE", "QUARTERxQUARTER");
-	IupSetAttributeHandle(dlg, "MENU", menubar);
-	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
-
-	IupMainLoop();
-
-	IupClose();
-	return 0;
+//	return main_iup( argc, argv );
+//	return main_nana( argc, argv );
+	return main_fltk( argc, argv );
 }

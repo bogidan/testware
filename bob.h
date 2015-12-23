@@ -32,5 +32,54 @@ typedef const wchar_t *wcs_c;
 typedef       TCHAR   *tcs_t, tstr_t[MAX_PATH];
 typedef const TCHAR   *tcs_c;
 
-
+// Utils
 #define lengthOf(a) (sizeof(a)/sizeof(*a))
+
+// Debug
+typedef int (__cdecl *print_ft)(const char*, ...);
+extern print_ft dprintf, eprintf;
+
+#define EVAL_STRING(a) #a
+#define MAKE_STRING(a) EVAL_STRING(a)
+#define _sLINE__       MAKE_STRING(__LINE__)
+#define __TRACE__      "["__FUNCTION__":"_sLINE__"]"
+#define _ln "\n"
+
+#define print(...)   dprintf(__VA_ARGS__)
+#define trace(...)   dprintf(__TRACE__ __VA_ARGS__)
+#define  warn(...)   dprintf("Warning: "__VA_ARGS__)
+#define error(...)   eprintf("Error: " __FILE__ "[" _sLINE__ "]\n\t" __VA_ARGS__)
+// Search and replace to match '\n' on end of strings
+// {DEFAULT\(.*}[^\\][^n]" -> \1\\n"
+
+#define println(str,...)   dprintf(str _ln,__VA_ARGS__)
+#define traceln(str,...)   dprintf(__TRACE__ str _ln,__VA_ARGS__)
+#define  warnln(str,...)   dprintf("Warning: "str _ln __VA_ARGS__)
+
+#if defined _WIN32 && defined _DEBUG
+#define DBREAK __debugbreak()
+#else
+#define DBREAK
+#endif
+
+#ifndef ASSERT
+#define ASSERT(a,...) if(!(a)) { DBREAK; error(#a _ln __VA_ARGS__); }
+//#define ASSERT(a,...) (!a || (__debugbreak(),error(#a"\n"__VA_ARGS__))
+#endif
+
+#ifndef VERIFY
+#define VERIFY(a) ASSERT(a)
+#endif
+
+#define VERIFY_EQ(v,a)            ASSERT((a)==v)
+#define VERIFY_NEQ(v,a)           ASSERT((a)!=v)
+#define VERIFY_SUCCESS(a)         ASSERT(SUCCEEDED(a))
+#define BREAK                     DBREAK; error("BREAK" _ln);  break
+#define RETURN                    DBREAK; error("RETURN" _ln); return
+#define GOTO                      DBREAK; error("GOTO" _ln);   goto
+#define DEFAULT(...)     default: DBREAK; error("DEFAULT: " __VA_ARGS__);
+#define CHECK                     DBREAK
+#define ONCE(action) { static bool once = true; if( once ) { once = false; action; } }
+
+
+
