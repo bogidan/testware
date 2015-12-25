@@ -11,7 +11,7 @@
       <PreprocessorDefinitions>_MBCS;WIN32;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(libs)\iup32st;$(libs)\nana\build\bin;$(libs)\fltk-1.3.3\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(libs)\iup32st;$(libs)\nana\build\bin;$(libs)\fltk-1.3.3\lib;$(ProjectDir)\lua</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

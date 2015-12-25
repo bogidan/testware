@@ -17,6 +17,11 @@
 #include "serial.h"
 #include <thread>
 
+nil load_script( str_c fn );
+extern fastdelegate::FastDelegate1<const char*>                 delSend;
+extern fastdelegate::FastDelegate3<const char*,int,const char*> delAdd;
+
+
 #include "enumser/enumser.h"
 auto dialog_SerialConfig( int w = 400, int h = 300 ) {
 	std::vector<UINT> ports;
@@ -85,14 +90,8 @@ public:
 		, serial_stop   ( CreateEvent(nullptr, true, false, nullptr) )
 		, serial_thread ( serial_main, std::ref(serial), std::ref(serial_buffer), serial_stop )
 	{
-		menubar.add("&Heater/&Auto",    "^a", [](Fl_Widget *w, void *p) {
-			((ConsoleWindow*)p)->serial.transmit( "hau\r" );
-		}, this, FL_MENU_TOGGLE|FL_MENU_VALUE);
-		menubar.add("&Heater/&Enable",  "^e", [](Fl_Widget *w, void *p) {
-			((ConsoleWindow*)p)->serial.transmit( "hen\r" );
-		}, this, 0 );
-		menubar.add("&Heater/&Disable", "^d", [](Fl_Widget *w, void *p) {
-			((ConsoleWindow*)p)->serial.transmit( "hds\r" );
+		menubar.add("Load Script",    FL_F+5, [](Fl_Widget *w, void *p) {
+			load_script("script.lua");
 		}, this, 0 );
 		menubar.add("&Clear",           NULL, [](Fl_Widget *w, void *p) {
 			((ConsoleWindow*)p)->buffer.text( NULL );
@@ -120,6 +119,9 @@ public:
 			}
 		}, this, FL_MENU_TOGGLE );
 
+		delSend = fastdelegate::MakeDelegate( &serial, serial_t::transmit );
+		delAdd  = fastdelegate::MakeDelegate( this, ConsoleWindow::add_test );
+
 		console.buffer( buffer );
 		console.textfont(FL_COURIER);
 		console.textsize(12);
@@ -139,6 +141,17 @@ public:
 
 		console.buffer(0);
 	};
+	void add_test( const char* name, int shortcut, const char* function ) {
+		menubar.add("&Heater/&Auto",    "^a", [](Fl_Widget *w, void *p) {
+			((ConsoleWindow*)p)->serial.transmit( "hau\r" );
+		}, this, FL_MENU_TOGGLE|FL_MENU_VALUE);
+		menubar.add("&Heater/&Enable",  "^e", [](Fl_Widget *w, void *p) {
+			((ConsoleWindow*)p)->serial.transmit( "hen\r" );
+		}, this, 0 );
+		menubar.add("&Heater/&Disable", "^d", [](Fl_Widget *w, void *p) {
+			((ConsoleWindow*)p)->serial.transmit( "hds\r" );
+		}, this, 0 );
+	}
 	void scroll_to_end() {
 		console.scroll( console.count_lines(0, buffer.length(), 1), 0 );
 	}

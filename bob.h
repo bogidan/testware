@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+typedef  void        nil;
 typedef  int8_t  s8, s08,  S08, *pS08;
 typedef  int16_t     s16,  S16, *pS16;
 typedef  int32_t     s32,  S32, *pS32;

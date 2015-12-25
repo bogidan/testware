@@ -1,24 +1,47 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="serial.cpp" />
-    <ClCompile Include="serial.config.cpp" />
-    <ClCompile Include="main_iup.cpp" />
-    <ClCompile Include="main_nana.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="main_fltk.cpp" />
     <ClCompile Include="enumser\enumser.cpp">
       <Filter>enumser</Filter>
     </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="main_fltk.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="main_iup.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="main_nana.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="serial.config.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="serial.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="config.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bob.h" />
-    <ClInclude Include="serial.h" />
-    <ClInclude Include="options.h" />
     <ClInclude Include="enumser\enumser.h">
       <Filter>enumser</Filter>
     </ClInclude>
-    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="bob.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="options.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="serial.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="libs.props" />
@@ -26,6 +49,12 @@
   <ItemGroup>
     <Filter Include="enumser">
       <UniqueIdentifier>{940c58f2-3b8d-49ea-bd35-035f90de46b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{0ade5c2b-f8f3-44b6-9a78-009b80724e78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{f671a6af-82b5-4e24-a19e-0644bee7be15}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

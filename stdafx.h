@@ -6,4 +6,5 @@
 #include <vector>
 #include <string>
 
+#include "fastdelegate\FastDelegate.h"
 #include "bob.h"
