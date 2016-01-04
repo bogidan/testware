@@ -43,6 +43,13 @@ public:
 	nil abort() {
 		lua_abort = m_L;
 	}
+	nil reset() {
+		if( running ) abort();
+		::SetEvent(quitEvent);
+		thread.join();
+		::ResetEvent(quitEvent);
+		thread = std::thread(stProc, this);
+	}
 
 private:
 	static int lua_menu_register( lua_State *L );

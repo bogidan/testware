@@ -64,6 +64,8 @@ public:
 		, lua(menu_add, MakeDelegate( &serial, &serial_t::transmit ))
 	{
 		menubar.add("Load Script",    FL_F+5, [](Fl_Widget *w, void *p) {
+			tests_menu.clear();
+			((ConsoleWindow*)p)->lua.reset();
 			//load_script("script.lua");
 		}, this, 0 );
 		menubar.add("&Clear",           NULL, [](Fl_Widget *w, void *p) {
