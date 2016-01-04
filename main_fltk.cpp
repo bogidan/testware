@@ -137,7 +137,16 @@ public:
 		return Fl_Widget::handle(e);
 	}
 	void scroll_to_end() {
-		console.scroll( console.count_lines(0, buffer.length(), 1), 0 );
+		auto len   = buffer.length();
+		auto lines = console.count_lines(0, len, 1);
+		if(lines > 2000) {
+			int idx = 0;
+			if(buffer.findchar_forward(0,'\n', &idx )) {
+				buffer.remove(0, idx);
+				lines--;
+			}
+		}
+		console.scroll( lines, 0 );
 	}
 	static void idle_callback ( void *data ) {
 		ConsoleWindow &win = *(ConsoleWindow*)data;
