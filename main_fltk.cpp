@@ -1,14 +1,15 @@
 
 #include "stdafx.h"
 #include <FL/Fl.H>
-#include <FL/Fl_Window.H>
 #include <FL/Fl_Box.H>
-#include <FL/Fl_File_Chooser.H>
 #include <FL/Fl_Native_File_Chooser.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Text_Editor.H>
 #include <FL/Fl_Menu_Bar.H>
+#include <FL/Fl_Menu_Button.H>
 #include <FL/Fl_Preferences.H>
+
+#include "luaThread.h"
 
 #pragma comment(lib, "fltkd.lib")
 #pragma comment(lib, "fltkformsd.lib")
@@ -17,59 +18,30 @@
 #include "serial.h"
 #include <thread>
 
-nil load_script( str_c fn );
-extern fastdelegate::FastDelegate1<const char*>                 delSend;
-extern fastdelegate::FastDelegate3<const char*,int,const char*> delAdd;
+std::tuple<std::string, u32> dialog_SerialConfig( int w = 400, int h = 300 );
+Fl_Menu_Button tests_menu(0,0,80,1, "Loaded Tests");
+Fl_Menu_Item running_menu[] = {
+	{"Abort", 0, [](Fl_Widget *w, void *v){ ((luaThread*)w)->abort(); }, 0 },
+	{0}
+};
 
-
-#include "enumser/enumser.h"
-auto dialog_SerialConfig( int w = 400, int h = 300 ) {
-	std::vector<UINT> ports;
-	std::vector<std::string> friendlyNames;
-	if( !CEnumerateSerial::UsingSetupAPI2(ports, friendlyNames) )
-		throw "Failure in EnumSer Library";
-
-	char buf[40];
-	int w2 = w/2, column_widths[] = { w-10, 0 };
-	Fl_Double_Window win(w, h);
-	Fl_Browser port(5,    5, w2-10, h-40);
-		port.column_widths(column_widths);
-		port.column_char(',');
-		port.type(FL_HOLD_BROWSER);
-		for(u32 i = 0; i < ports.size(); i++) {
-			sprintf_s(buf, "COM%u", ports[i]);
-			port.add(buf, (void*)ports[i]);
-		}
-	Fl_Browser baud(5+w2, 5, w2-10, h-40);
-		baud.column_widths(column_widths);
-		baud.column_char(',');
-		baud.type(FL_HOLD_BROWSER);
-		for(u32 i : {CBR_38400, CBR_115200}) {
-			sprintf_s(buf, "%u", i);
-			baud.add(buf, (void*)i);
-		}
-	Fl_Return_Button ok(w-100, h-35, 90, 25, "Select");
-		ok.callback([](Fl_Widget *w, void *p){
-			((Fl_Window*)p)->hide();
-		}, &win);		
-
-    win.add(port);
-	win.add(baud);
-	win.add(ok);
-    win.end();
-
-	win.set_modal();
-    win.show();
-	while( win.shown() ) Fl::wait();
-	
-	sprintf_s(buf, "\\\\.\\COM%u", (u32)port.data(port.value()));
-	return std::make_tuple(std::string(buf), (u32)baud.data(baud.value()));	
+void menu_add(str_c menu, str_c key, void* v)
+{
+	int keyi = fl_old_shortcut(key);
+	if( menu ) tests_menu.add(menu, keyi, [](Fl_Widget *w, void *v) {
+		if( w && v ) ((luaThread*)w)->exec( (int)v );
+	}, v, 0);
 }
 
-class ConsoleWindow : public Fl_Double_Window {
+void transmit(str_c msg) {
+	printf(msg);
+}
+
+class ConsoleWindow: public Fl_Double_Window {
 	Fl_Menu_Bar menubar;
 	Fl_Text_Display console;
 	Fl_Text_Buffer buffer;
+	luaThread lua;
 
 	serial_t       serial;
 	block_buffer_t serial_buffer;
@@ -89,9 +61,10 @@ public:
 		, serial        ( port, nullptr, baud ) // CBR_115200 CBR_38400
 		, serial_stop   ( CreateEvent(nullptr, true, false, nullptr) )
 		, serial_thread ( serial_main, std::ref(serial), std::ref(serial_buffer), serial_stop )
+		, lua(menu_add, MakeDelegate( &serial, &serial_t::transmit ))
 	{
 		menubar.add("Load Script",    FL_F+5, [](Fl_Widget *w, void *p) {
-			load_script("script.lua");
+			//load_script("script.lua");
 		}, this, 0 );
 		menubar.add("&Clear",           NULL, [](Fl_Widget *w, void *p) {
 			((ConsoleWindow*)p)->buffer.text( NULL );
@@ -119,9 +92,6 @@ public:
 			}
 		}, this, FL_MENU_TOGGLE );
 
-		delSend = fastdelegate::MakeDelegate( &serial, serial_t::transmit );
-		delAdd  = fastdelegate::MakeDelegate( this, ConsoleWindow::add_test );
-
 		console.buffer( buffer );
 		console.textfont(FL_COURIER);
 		console.textsize(12);
@@ -141,16 +111,28 @@ public:
 
 		console.buffer(0);
 	};
-	void add_test( const char* name, int shortcut, const char* function ) {
-		menubar.add("&Heater/&Auto",    "^a", [](Fl_Widget *w, void *p) {
-			((ConsoleWindow*)p)->serial.transmit( "hau\r" );
-		}, this, FL_MENU_TOGGLE|FL_MENU_VALUE);
-		menubar.add("&Heater/&Enable",  "^e", [](Fl_Widget *w, void *p) {
-			((ConsoleWindow*)p)->serial.transmit( "hen\r" );
-		}, this, 0 );
-		menubar.add("&Heater/&Disable", "^d", [](Fl_Widget *w, void *p) {
-			((ConsoleWindow*)p)->serial.transmit( "hds\r" );
-		}, this, 0 );
+
+	int handle(int e) {
+		switch(e) {
+		case FL_SHORTCUT:
+			if( !lua.running && tests_menu.handle(e) ) return 1;
+			break;
+		case FL_PUSH:
+			if( Fl::event_button() == FL_RIGHT_MOUSE ) {
+				tests_menu.position(Fl::event_x(), Fl::event_y());
+				tests_menu.type( Fl_Menu_Button::POPUP2 );
+				const auto &m = (lua.running)
+					? running_menu->popup(Fl::event_x(), Fl::event_y(), 0, running_menu)
+					: tests_menu.popup();
+				if( m && m->callback_ ) m->do_callback((Fl_Widget*)&lua, m->user_data());
+				return 1;
+			}
+			break;
+		case FL_RELEASE:
+			if( Fl::event_button() == FL_RIGHT_MOUSE ) return 1;
+			break;
+		}
+		return Fl_Widget::handle(e);
 	}
 	void scroll_to_end() {
 		console.scroll( console.count_lines(0, buffer.length(), 1), 0 );

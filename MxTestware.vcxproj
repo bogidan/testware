@@ -106,6 +106,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_MBCS;WIN32;WIN32_LEAN_AND_MEAN;CENUMERATESERIAL_USE_STL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Create</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -128,24 +129,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="config.cpp" />
+    <ClCompile Include="dlgSerialConfig.cpp" />
     <ClCompile Include="enumser\enumser.cpp" />
+    <ClCompile Include="luaThread.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="main_fltk.cpp" />
-    <ClCompile Include="main_iup.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="main_nana.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="serial.config.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="serial.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bob.h" />
     <ClInclude Include="enumser\enumser.h" />
+    <ClInclude Include="luaThread.h" />
     <ClInclude Include="options.h" />
     <ClInclude Include="serial.h" />
     <ClInclude Include="stdafx.h" />

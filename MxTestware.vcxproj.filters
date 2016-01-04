@@ -4,27 +4,11 @@
     <ClCompile Include="enumser\enumser.cpp">
       <Filter>enumser</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="main_fltk.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="main_iup.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="main_nana.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="serial.config.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="serial.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="config.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="main_fltk.cpp" />
+    <ClCompile Include="serial.cpp" />
+    <ClCompile Include="dlgSerialConfig.cpp" />
+    <ClCompile Include="luaThread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="enumser\enumser.h">
@@ -42,9 +26,9 @@
     <ClInclude Include="stdafx.h">
       <Filter>headers</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="libs.props" />
+    <ClInclude Include="luaThread.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="enumser">
@@ -56,5 +40,10 @@
     <Filter Include="Source">
       <UniqueIdentifier>{f671a6af-82b5-4e24-a19e-0644bee7be15}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libs.props">
+      <Filter>headers</Filter>
+    </None>
   </ItemGroup>
 </Project>
