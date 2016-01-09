@@ -26,6 +26,7 @@ std::tuple<std::string, u32> dialog_SerialConfig( int w = 400, int h = 300 )
 			sprintf_s(buf, "COM%u", ports[i]);
 			port.add(buf, (void*)ports[i]);
 		}
+		port.select(1,1);
 	Fl_Browser baud(5+w2, 5, w2-10, h-40);
 		baud.column_widths(column_widths);
 		baud.column_char(',');
@@ -34,7 +35,12 @@ std::tuple<std::string, u32> dialog_SerialConfig( int w = 400, int h = 300 )
 			sprintf_s(buf, "%u", i);
 			baud.add(buf, (void*)i);
 		}
-	Fl_Return_Button ok(w-100, h-35, 90, 25, "Select");
+		baud.select(1,1);
+	Fl_Button refresh(w-200, h-31, 90, 25, "Refresh");
+		refresh.callback([](Fl_Widget *w, void *p){
+			// TODO
+		}, &win);		
+	Fl_Return_Button ok(w-100, h-31, 90, 25, "Select");
 		ok.callback([](Fl_Widget *w, void *p){
 			((Fl_Window*)p)->hide();
 		}, &win);		

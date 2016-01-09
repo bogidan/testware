@@ -8,6 +8,7 @@
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Menu_Button.H>
 #include <FL/Fl_Preferences.H>
+#include <FL/Fl_Input.H>
 
 #include "luaThread.h"
 
@@ -37,8 +38,20 @@ void transmit(str_c msg) {
 	printf(msg);
 }
 
+namespace Monokai {
+	const char name[] = "Monokai";
+	const Fl_Color background = FL_BLACK; //(Fl_Color) 0x27282200;
+	const Fl_Color selection  = FL_GRAY;  //(Fl_Color) 0x49483E00;
+	const Fl_Color text       = FL_WHITE; //(Fl_Color) 0xF8F8F200;
+	const Fl_Color menu_bg    = (Fl_Color) 0xEDEDED00;
+	const Fl_Color menu_txt   = (Fl_Color) 0x40404000;
+	const Fl_Color menu_sel   = (Fl_Color) 0x00BFFF00;
+};
+
+
 class ConsoleWindow: public Fl_Double_Window {
 	Fl_Menu_Bar menubar;
+	Fl_Input    command;
 	Fl_Text_Display console;
 	Fl_Text_Buffer buffer;
 	luaThread lua;
@@ -55,18 +68,23 @@ public:
 	}
 	ConsoleWindow( int w, int h, const char *title, DWORD baud = CBR_38400, const char *port = "COM2" )
 		: Fl_Double_Window (w, h, title)
-		, menubar (0,  0, w,     25)
-		, console (0, 25, w, h - 25)
+		, menubar (0, 0, w, 26)
+		, command (w-252, 2, 250, 22)
+		, console (0, 26, w, h - 26)
 		, buffer ()
 		, serial        ( port, nullptr, baud ) // CBR_115200 CBR_38400
 		, serial_stop   ( CreateEvent(nullptr, true, false, nullptr) )
 		, serial_thread ( serial_main, std::ref(serial), std::ref(serial_buffer), serial_stop )
 		, lua(menu_add, MakeDelegate( &serial, &serial_t::transmit ))
 	{
+        tests_menu.textfont(FL_SCREEN);
+        tests_menu.textsize(14);
+		tests_menu.color( Monokai::menu_bg, Monokai::menu_sel );
+		tests_menu.textcolor( Monokai::menu_txt );
+
 		menubar.add("Load Script",    FL_F+5, [](Fl_Widget *w, void *p) {
 			tests_menu.clear();
 			((ConsoleWindow*)p)->lua.reset();
-			//load_script("script.lua");
 		}, this, 0 );
 		menubar.add("&Clear",           NULL, [](Fl_Widget *w, void *p) {
 			((ConsoleWindow*)p)->buffer.text( NULL );
@@ -92,12 +110,27 @@ public:
 			} else {
 				obj.serial.log();
 			}
-		}, this, FL_MENU_TOGGLE );
+		}, this, FL_MENU_TOGGLE | FL_MENU_INACTIVE );
+        //menubar.add("Tests", 0, 0, (void*)&tests_menu.menu()[1], FL_SUBMENU_POINTER );
+
+		command.when( FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED );
+		command.textfont(FL_SCREEN);
+		command.callback( [](Fl_Widget *w, void *v) {
+			Fl_Input *input = ((Fl_Input*)w);
+			cstr_t buf;
+			strcpy_s(buf, input->value());
+			strcat_s(buf, "\r");
+			printf("Command: %s\n", buf);
+			((serial_t*)v)->transmit(buf);
+		}, &serial);
 
 		console.buffer( buffer );
-		console.textfont(FL_COURIER);
-		console.textsize(12);
-		console.cursor_style( Fl_Text_Display::BLOCK_CURSOR );
+		console.color( Monokai::background, Monokai::selection );
+		console.textcolor( Monokai::text );
+		console.cursor_color( Monokai::selection );
+		console.textfont(FL_SCREEN);
+		console.textsize(14);
+		console.cursor_style( Fl_Text_Display::SIMPLE_CURSOR );
 		console.wrap_mode( Fl_Text_Display::WRAP_AT_BOUNDS, 0 );
 
 		this->resizable( console );
@@ -134,12 +167,12 @@ public:
 			if( Fl::event_button() == FL_RIGHT_MOUSE ) return 1;
 			break;
 		}
-		return Fl_Widget::handle(e);
+		return Fl_Double_Window::handle(e);
 	}
 	void scroll_to_end() {
 		auto len   = buffer.length();
 		auto lines = console.count_lines(0, len, 1);
-		if(lines > 2000) {
+		if(lines > 10) {
 			int idx = 0;
 			if(buffer.findchar_forward(0,'\n', &idx )) {
 				buffer.remove(0, idx);

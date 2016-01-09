@@ -3,25 +3,9 @@ if not tx then
   tx = function(msg) print(msg) end
 end
 if not register then
-  register = function(func) print("register: ", func) end
+  register = function(key,menu,func) print("register:", menu, key) func() end
 end
-
-
-
-function Enable()
-	tx("Ena\r")
-end
-
-function Disable()
-	tx("Dis\r")
-end
-
-function long()
-	while(true) do
-		tx(".")
-		sleep(500)
-	end
-end
+if not sleep then sleep = function() print("sleep") end end
 
 --[[ Shortcuts - use prefixes comnined with ascii codes/characters
 Prefixes:
@@ -44,6 +28,19 @@ Examples:
   "^0143"  -- Same as (FL_CTRL|'c'), or (FL_CTRL|0143)
   nil      -- No shortcut
 ]]
-register("^e", "Heater/Enable",  Enable )
-register("^d", "Heater/Disable", Disable)
-register(nil,  "Long", long)
+package.path = "./?.lua;" .. package.path
+local auxdac = require("auxdac")
+local dbgctl = require("dbgctrl")
+
+function long()
+	while(true) do tx(".") sleep(500) end
+end
+
+function adsb_toggle()
+	tx("* T\r")
+end
+register("^t", "Transmit Toggle", adsb_toggle)
+
+--auxdac.register_menu( register );
+--dbgctl.register_menu( register );
+
