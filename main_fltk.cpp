@@ -9,6 +9,7 @@
 #include <FL/Fl_Menu_Button.H>
 #include <FL/Fl_Preferences.H>
 #include <FL/Fl_Input.H>
+#include <FL/fl_ask.H>
 
 #include "luaThread.h"
 
@@ -18,6 +19,8 @@
 
 #include "serial.h"
 #include <thread>
+
+#define DEFAULT_FONT FL_COURIER_BOLD
 
 std::tuple<std::string, u32> dialog_SerialConfig( int w = 400, int h = 300 );
 Fl_Menu_Button tests_menu(0,0,80,1, "Loaded Tests");
@@ -40,6 +43,7 @@ void transmit(str_c msg) {
 
 namespace Monokai {
 	const char name[] = "Monokai";
+	const int console_fontsize = 14;
 	const Fl_Color background = FL_BLACK; //(Fl_Color) 0x27282200;
 	const Fl_Color selection  = FL_GRAY;  //(Fl_Color) 0x49483E00;
 	const Fl_Color text       = FL_WHITE; //(Fl_Color) 0xF8F8F200;
@@ -55,6 +59,7 @@ class ConsoleWindow: public Fl_Double_Window {
 	Fl_Text_Display console;
 	Fl_Text_Buffer buffer;
 	luaThread lua;
+	HWND dbgConsole;
 
 	serial_t       serial;
 	block_buffer_t serial_buffer;
@@ -76,12 +81,23 @@ public:
 		, serial_stop   ( CreateEvent(nullptr, true, false, nullptr) )
 		, serial_thread ( serial_main, std::ref(serial), std::ref(serial_buffer), serial_stop )
 		, lua(menu_add, MakeDelegate( &serial, &serial_t::transmit ))
+		, dbgConsole (NULL)
 	{
-        tests_menu.textfont(FL_SCREEN);
+        tests_menu.textfont(DEFAULT_FONT);
         tests_menu.textsize(14);
 		tests_menu.color( Monokai::menu_bg, Monokai::menu_sel );
 		tests_menu.textcolor( Monokai::menu_txt );
 
+		AllocConsole(); 
+		freopen("CONOUT$", "w", stdout);
+		freopen("CONIN$",  "r", stdin);
+		dbgConsole = GetConsoleWindow();
+		ShowWindow(dbgConsole, SW_HIDE);
+		
+		menubar.add("&Edit/&Console FontSize", NULL, [](Fl_Widget *w, void *p) {
+			auto fontsize = atoi(fl_input("Font Size...", "14"));
+			((Fl_Text_Display*)p)->textsize(fontsize ? fontsize : 14);
+		}, &console, 0);
 		menubar.add("Load Script",    FL_F+5, [](Fl_Widget *w, void *p) {
 			tests_menu.clear();
 			((ConsoleWindow*)p)->lua.reset();
@@ -111,16 +127,20 @@ public:
 				obj.serial.log();
 			}
 		}, this, FL_MENU_TOGGLE | FL_MENU_INACTIVE );
+		menubar.add("DbgConsole", NULL, [](Fl_Widget *w, void *p) {
+			static int console = false;
+			ShowWindow((HWND)p, (console = !console) ? SW_SHOW : SW_HIDE);
+		}, dbgConsole, FL_MENU_TOGGLE );
         //menubar.add("Tests", 0, 0, (void*)&tests_menu.menu()[1], FL_SUBMENU_POINTER );
 
 		command.when( FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED );
-		command.textfont(FL_SCREEN);
+		command.textfont(DEFAULT_FONT);
 		command.callback( [](Fl_Widget *w, void *v) {
 			Fl_Input *input = ((Fl_Input*)w);
 			cstr_t buf;
 			strcpy_s(buf, input->value());
 			strcat_s(buf, "\r");
-			printf("Command: %s\n", buf);
+			printf("Command: %s\r", buf);
 			((serial_t*)v)->transmit(buf);
 		}, &serial);
 
@@ -128,8 +148,8 @@ public:
 		console.color( Monokai::background, Monokai::selection );
 		console.textcolor( Monokai::text );
 		console.cursor_color( Monokai::selection );
-		console.textfont(FL_SCREEN);
-		console.textsize(14);
+		console.textfont(DEFAULT_FONT);
+		console.textsize(Monokai::console_fontsize);
 		console.cursor_style( Fl_Text_Display::SIMPLE_CURSOR );
 		console.wrap_mode( Fl_Text_Display::WRAP_AT_BOUNDS, 0 );
 
@@ -143,6 +163,7 @@ public:
 		serial_thread.join();
 
 		CloseHandle(serial_stop);
+		FreeConsole();
 
 		console.buffer(0);
 	};

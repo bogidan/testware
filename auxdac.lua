@@ -1,56 +1,85 @@
 
 local addr = "43c12008 "
-local scale_ring   = 0x4
-local driver_scale = 0x3FF
-local final_scale  = 0x3FF
+local driver = {
+  control = 0x90,
+  scale   = 0x3FF,
+  voltage = 2.9,
+}
+local final = {
+  control = 0x90,
+  scale   = 0x3FF,
+  voltage = 2.9,
+}
 
-function gen( offst, scale )
+function auxdac_gen( offst, scale )
     if( scale > 0x3ff ) then scale = 0x3ff end
     if( offst > 0x004 ) then offst = 0x004 end
 
     return string.format("%02X", scale & 0xff ) .. string.format("%02X", 0x80 | (offst<<2) | ((scale >> 8) & 0x03))
 end
 
-function aux_dac()
-    local value = gen(scale_ring, final_scale) .. gen(scale_ring, driver_scale)
+function auxdac()
+    local value = auxdac_gen(final.ring, final.scale) .. auxdac_gen(driver.ring, driver.scale)
     tx("* WF " .. addr .. value .. "\r")
     --sleep(1)
     --tx("* R 43c12008" .. addr_aux_dac .. "\r")
 end
 
-function final_adjust( change )
-    final_scale = final_scale + change
-    if( final_scale < 0x000 ) then final_scale = 0x000 end
-    if( final_scale > 0x3FF ) then final_scale = 0x3FF end
-    aux_dac()
+function auxdac_reset()
+	driver.control = 0x90
+	driver.scale   = 0x3FF
+	driver.voltage = 2.9
+	final.control = 0x90
+	final.scale   = 0x3FF
+	final.voltage = 2.9
+	auxdac()
 end
 
-function driver_adjust( change )
-    driver_scale = driver_scale + change
-    if( driver_scale < 0x000 ) then driver_scale = 0x000 end
-    if( driver_scale > 0x3FF ) then driver_scale = 0x3FF end
-    aux_dac()
+function auxdac_set_voltage( tbl, v )
+	-- Clamp Voltage
+	if( v > 2.9 ) then v = 2.9 elseif( v < 0 ) then v = 0 end
+	if( v < 1.5 ) then -- Use 1.5v Top of Range, 2v range
+    tbl.voltage = v
+    tbl.scale   = math.ceil(0x3FF * ((v + 0.5) / 2))
+    tbl.control = 0x84
+	else               -- Use 2.9v Top of Range, 2V range
+    tbl.voltage = v
+    tbl.scale   = math.ceil(0x3FF * ((v - 0.9) / 2))
+    tbl.control = 0x90
+	end
+  aux_dac()
 end
 
-function driver_ramp()
-    driver_scale = 0x3FF
-    final_scale  = 0x3FF
-    while( driver_scale > 0 ) do
-        driver_scale = driver_scale - 1
-        sleep(100)
-        aux_dac()
-    end
+function auxdac_adjust( tbl, dv )
+  auxdac_set_voltage( tbl, tbl.voltage + dv )
 end
 
-register(nil, "Aux Dac/final/++",   function()  final_adjust( 16) end)
-register(nil, "Aux Dac/final/+",    function()  final_adjust(  1) end)
-register(nil, "Aux Dac/final/-",    function()  final_adjust( -1) end)
-register(nil, "Aux Dac/final/--",   function()  final_adjust(-16) end)
-register(nil, "Aux Dac/driver/++",  function() driver_adjust( 16) end)
-register(nil, "Aux Dac/driver/+",   function() driver_adjust(  1) end)
-register(nil, "Aux Dac/driver/-",   function() driver_adjust( -1) end)
-register(nil, "Aux Dac/driver/--",  function() driver_adjust(-16) end)
-register(nil, "Aux Dac/ramp/driver",function() driver_ramp()      end)
-register(nil, "Aux Dac/ramp/final", function() driver_ramp()      end)
-register(nil, "Aux Dac/reset",      function() final_scale = 0x3FF driver_scale = 0x3FF aux_dac() end)
+function ramp_driver()
+	auxdac_reset();
+	while(driver.voltage > 0) do
+		sleep(250)
+		auxdac_adjust_voltage( driver, -0.02 )
+	end
+end
+function ramp_final()
+	auxdac_reset();
+	while(driver.voltage > 0) do
+		sleep(250)
+		auxdac_adjust_voltage(final, -0.02 )
+	end
+end
+
+
+register(nil, "Aux Dac/final/++",   function() auxdac_adjust(final,   0.10) end)
+register(nil, "Aux Dac/final/+",    function() auxdac_adjust(final,   0.01) end)
+register(nil, "Aux Dac/final/-",    function() auxdac_adjust(final,  -0.01) end)
+register(nil, "Aux Dac/final/--",   function() auxdac_adjust(final,  -0.10) end)
+register(nil, "Aux Dac/driver/++",  function() auxdac_adjust(driver,  0.10) end)
+register(nil, "Aux Dac/driver/+",   function() auxdac_adjust(driver,  0.01) end)
+register(nil, "Aux Dac/driver/-",   function() auxdac_adjust(driver, -0.01) end)
+register(nil, "Aux Dac/driver/--",  function() auxdac_adjust(driver, -0.10) end)
+register(nil, "Aux Dac/ramp/driver",function() ramp_driver() end)
+register(nil, "Aux Dac/ramp/final", function() ramp_final()  end)
+register(nil, "Aux Dac/reset",      auxdac_reset) 
+
 

@@ -2,14 +2,15 @@
 
 #include <stdint.h>
 typedef  void        nil;
+
 typedef  int8_t  s8, s08,  S08, *pS08;
 typedef  int16_t     s16,  S16, *pS16;
 typedef  int32_t     s32,  S32, *pS32;
 typedef  int64_t     s64,  S64, *pS64;
 
-typedef uint8_t  u8, u08,  U08, *pU08;
+typedef uint8_t  u8, u08,  U08, *pU08, b08;
 typedef uint16_t     u16,  U16, *pU16;
-typedef uint32_t     u32,  U32, *pU32;
+typedef uint32_t     u32,  U32, *pU32, b32;
 typedef uint64_t     u64,  U64, *pU64;
 
 typedef float        f32,  F32, *pF32;
@@ -35,10 +36,13 @@ typedef const TCHAR   *tcs_c;
 
 // Utils
 #define lengthOf(a) (sizeof(a)/sizeof(*a))
+#define stRETURN(value) {static const auto st = value; return st;}
 
 // Debug
 typedef int (__cdecl *print_ft)(const char*, ...);
 extern print_ft dprintf, eprintf;
+//extern DWORD log_report( enumErrorWarning code, DWORD err, TCHAR* fn );
+//extern DWORD log_error ( const char* file, int line, enumErrorWarning code, DWORD err, TCHAR* fn );
 
 #define EVAL_STRING(a) #a
 #define MAKE_STRING(a) EVAL_STRING(a)
@@ -79,6 +83,7 @@ extern print_ft dprintf, eprintf;
 #define RETURN                    DBREAK; error("RETURN" _ln); return
 #define GOTO                      DBREAK; error("GOTO" _ln);   goto
 #define DEFAULT(...)     default: DBREAK; error("DEFAULT: " __VA_ARGS__);
+//#define DEFAULT_(c,r,fn) default: DBREAK; log_error(__FILE__,__LINE__,c,e,fn);
 #define CHECK                     DBREAK
 #define ONCE(action) { static bool once = true; if( once ) { once = false; action; } }
 
