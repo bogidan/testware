@@ -5,6 +5,8 @@
 #include <FL/Fl_Native_File_Chooser.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Text_Editor.H>
+#include <FL/Fl_Button.H>
+#include <FL/Fl_Browser.H>
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Menu_Button.H>
 #include <FL/Fl_Preferences.H>
@@ -36,6 +38,23 @@ void menu_add(str_c menu, str_c key, void* v)
 		if( w && v ) ((luaThread*)w)->exec( (int)v );
 	}, v, 0);
 }
+/*
+void timer_callback ( void *data ) {
+	ConsoleWindow &win = *(ConsoleWindow*)data;
+
+	bool scroll = win.serial.poll([&](const char *str) {
+	//	_fwrite_nolock( str, sizeof(char), strlen(str), stdout );
+		win.buffer.append( str );
+	});
+
+	if( scroll ) win.scroll_to_end();
+
+	Fl::repeat_timeout(0.033, ConsoleWindow::idle_callback, &win);
+}
+void setTimeout(str_c name, )
+{
+	Fl::add_timeout( 1.0, timer_callback, );
+}//*/
 
 void transmit(str_c msg) {
 	printf(msg);
@@ -52,6 +71,120 @@ namespace Monokai {
 	const Fl_Color menu_sel   = (Fl_Color) 0x00BFFF00;
 };
 
+#define log_info(...) printf(__VA_ARGS__)
+#include <FL/Fl_Menu_Window.H>
+
+class PopupWindow : public Fl_Menu_Window {
+	Fl_Browser history;
+public:
+	PopupWindow( int x, int y, int w, int h, const char* label = 0 )
+		: Fl_Menu_Window (x, y, w, h)
+		, history        (0, 0, w, h)
+	{
+		history.type(FL_HOLD_BROWSER);
+		history.textfont(DEFAULT_FONT);
+        history.textsize(14);
+		history.color( Monokai::menu_bg, Monokai::menu_sel );
+		history.textcolor( Monokai::menu_txt );
+		history.add("This"); history.add("is"); history.add("a");
+
+		add(history);
+		end();
+		border(1);
+	}
+	void popup() {
+		show();
+		history.take_focus();
+	}
+};
+class PopupWindowX : public Fl_Menu_Window {
+    Fl_Box *output;
+    // Size window to just fit output's label text
+    void SizeToText() {
+        int W=0, H=0;
+        fl_font(output->labelfont(), output->labelsize());
+        fl_measure(output->label(), W, H, 0);
+        resize(x(), y(), W+10, H+10);                           // +10: leaves +5 margin on all sides
+        output->resize(0, 0, W+10, H+10);
+    }
+public:
+    PopupWindowX() : Fl_Menu_Window(10,10) {
+        output = new Fl_Box(0, 0, w(), h());                    // box will have the text of user's msg
+        output->box(FL_UP_BOX);                                 // popup window will have an 'Up Box' border
+        end();
+        hide();
+        border(0);                                              // popup will be borderless
+        output->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);           // text should be left aligned
+        output->label("No text defined");                       // (default msg if none defined)
+        SizeToText();
+    }
+    // Change text in box
+    void text(const char*s) {
+        output->label(s);                                       // set message text
+        SizeToText();                                           // resize window to size of text
+    }
+    // Pop up window at current mouse position
+    void popup() {
+        position(Fl::event_x_root(), Fl::event_y_root());       // position window at cursor
+        show();
+    }
+};
+
+class CommandInput: public Fl_Group {
+	const int split;
+	Fl_Input       command;
+	Fl_Button      dropdown;
+	Fl_Browser    &history;
+	static const int dw;
+public:
+	CommandInput( int x, int y, int w, int h, Fl_Browser &history )
+		: Fl_Group (x, y, w, h * 2, NULL)
+		, split    (w - dw)
+		, command  (x,         y,     split, h)
+		, dropdown (x + split, y,     dw,    h, "@2>")
+		, history  (history)
+	{
+		command.when( FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED );
+		command.textfont(DEFAULT_FONT);
+		command.callback(do_command, this);
+		
+		dropdown.color( Monokai::menu_bg, Monokai::menu_sel );
+		dropdown.type(FL_TOGGLE_BUTTON);
+		dropdown.callback(do_dropdown, this);
+
+		history.resize(x + dw,    y + h, split, 300);
+		history.type(FL_HOLD_BROWSER);
+		history.textfont(DEFAULT_FONT);
+        history.textsize(14);
+		history.color( Monokai::menu_bg, Monokai::menu_sel );
+		history.textcolor( Monokai::menu_txt );
+		history.add("This"); history.add("is"); history.add("a");
+		history.hide();
+
+		add(command);
+		add(dropdown);
+		add(history);
+		end();
+	}
+	static nil do_command( Fl_Widget *w, void *v ) {
+		CommandInput *inp = ((CommandInput*) v);
+		str_c cmd = inp->command.value();
+		log_info("Command: %s\n", cmd);
+
+		//inp->history.add(cmd);
+		//inp->command.
+
+	//	((serial_t*)v)->transmit(cmd);
+	//	((serial_t*)v)->transmit("\r");
+	}
+	static nil do_dropdown( Fl_Widget *w, void *v ) {
+		CommandInput *inp = ((CommandInput*) v);
+
+		if( inp->dropdown.value() ) inp->history.show();
+		else                        inp->history.hide();
+	}
+};
+const int CommandInput::dw = 22;
 
 class ConsoleWindow: public Fl_Double_Window {
 	Fl_Menu_Bar menubar;
@@ -153,6 +286,7 @@ public:
 		console.cursor_style( Fl_Text_Display::SIMPLE_CURSOR );
 		console.wrap_mode( Fl_Text_Display::WRAP_AT_BOUNDS, 0 );
 
+
 		this->resizable( console );
 		this->show();
 	};
@@ -216,16 +350,18 @@ public:
 	}
 };
 
-int main_fltk(int argc, char *argv[] ) {
-	Fl::scheme("none"); // "gtk+", "gleam", "plastic"
 
+int main_fltk(int argc, char *argv[] ) {
+	Fl::scheme("gtk+"); // "none", "gtk+", "gleam", "plastic"
+
+	/*
 	auto config = dialog_SerialConfig( 400, 300 );
 	printf("Selected: %s at %u\n", std::get<0>(config).c_str(), std::get<1>(config) );
 
-	ConsoleWindow win( 640, 480, "MX Testware", std::get<1>(config), std::get<0>(config).c_str() );
+	ConsoleWindow win( 640, 480, "Testware", std::get<1>(config), std::get<0>(config).c_str() );
 //	Fl::add_idle( ConsoleWindow::idle_callback, &win );
 	Fl::add_timeout( 1.0, ConsoleWindow::idle_callback, &win);
-	return Fl::run();
+	return Fl::run(); // */
 
 	Fl_Window *window = new Fl_Window(340,180);
 	Fl_Box *box = new Fl_Box(20,40,300,100,"Hello, World!");
@@ -235,6 +371,13 @@ int main_fltk(int argc, char *argv[] ) {
 	box->labelsize(36);
 	box->labeltype(FL_SHADOW_LABEL);
 
+	Fl_Browser *popup = new Fl_Browser(0,0,0,0);	
+	CommandInput *cmd = new CommandInput(0,0,200,26,*popup);
+
+	cmd->box(FL_UP_BOX);
+	window->add(box);
+	window->add(cmd);
+	window->add(popup);
 	window->end();
 	window->show(argc, argv);
 

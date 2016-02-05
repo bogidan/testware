@@ -29,17 +29,25 @@ Examples:
   nil      -- No shortcut
 ]]
 package.path = "./?.lua;" .. package.path
-local auxdac = require("auxdac")
+local adsb   = require("adsb")
+--local auxdac = require("auxdac")
 local dbgctl = require("dbgctrl")
 
-function long()
-	while(true) do tx(".") sleep(500) end
+function temp_check()
+	tx("*P\r")
+end
+function temp_monitor()
+	while(true) do temp_check() sleep(1000) end
 end
 
 function adsb_toggle()
 	tx("* T\r")
 end
-register("^t", "Transmit Toggle", adsb_toggle)
+--register("^t", "Transmit Toggle", adsb_toggle)
+register("^p", "Temperature/Check",   temp_check)
+register(nil,  "Temperature/Monitor", temp_monitor)
+register(nil,  "Temperature/Standby", function() tx("*Ps") end)
+register(nil,  "Temperature/Enable",  function() tx("*Pe") end)
 
 --auxdac.register_menu( register );
 --dbgctl.register_menu( register );

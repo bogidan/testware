@@ -54,5 +54,7 @@ public:
 private:
 	static int lua_menu_register( lua_State *L );
 	static int lua_transmit( lua_State *L );
+	static int lua_transmit_bytes( lua_State *L );
 	static int lua_sleep( lua_State *L );
+	static int lua_timeout( lua_State *L );
 };

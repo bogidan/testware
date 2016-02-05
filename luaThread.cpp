@@ -90,6 +90,11 @@ int luaThread::lua_transmit( lua_State *L )
 	lua->delTransmit(msg);
 	return 0;
 }
+int luaThread::lua_transmit_bytes( lua_State *L )
+{
+	luaThread *lua = (luaThread*) lua_touserdata(L, lua_upvalueindex(1));
+	return 0;
+}
 int luaThread::lua_sleep( lua_State *L )
 {
 	auto ms = luaL_checkinteger(L, 1);
@@ -97,3 +102,19 @@ int luaThread::lua_sleep( lua_State *L )
 	else                 Sleep( (DWORD)ms );
 	return 0;
 }
+int luaThread::lua_timeout( lua_State *L )
+{
+	luaThread *lua = (luaThread*) lua_touserdata(L, lua_upvalueindex(1));
+	const char *name;
+	name = lua_tostring(L, 1);
+	int func = luaL_ref(L, LUA_REGISTRYINDEX);
+	
+//	lua->delMenuAdd(name, (void*) func);
+	
+	return 0;
+}
+
+struct message {
+	u8 __padding, start, type, length;
+	u8 raw[256];
+};

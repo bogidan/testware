@@ -1,0 +1,5 @@
+1000        90 12 34 56 90 7F 67 AA AA 87 1C    //Odd A-Pos = N30 E59:30
+40001000    90 12 34 56 90 7F 60 00 00 DB BC    //1 sec later, Even A-Pos = N30 E59:30
+
+
+

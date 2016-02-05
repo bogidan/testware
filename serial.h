@@ -40,6 +40,7 @@ struct serial_t {
 	bool log( str_c fn_log = NULL );
 	bool poll(std::function<void(str_c)> sink);
 	void transmit(const char* msg);
+	void transmit_bytes(const char* msg, size_t len);
 
 	void CALLBACK read_done(DWORD error, DWORD count);
 	void CALLBACK logw_done(DWORD error, DWORD count);
