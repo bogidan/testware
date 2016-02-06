@@ -73,86 +73,61 @@ namespace Monokai {
 
 #define log_info(...) printf(__VA_ARGS__)
 #include <FL/Fl_Menu_Window.H>
+#include <functional>
 
-class PopupWindow : public Fl_Menu_Window {
-	Fl_Browser history;
+template<class Widget>
+class Popup : public Widget {
+	std::function<void(void)> _bind;
 public:
-	PopupWindow( int x, int y, int w, int h, const char* label = 0 )
-		: Fl_Menu_Window (x, y, w, h)
-		, history        (0, 0, w, h)
-	{
-		history.type(FL_HOLD_BROWSER);
-		history.textfont(DEFAULT_FONT);
-        history.textsize(14);
-		history.color( Monokai::menu_bg, Monokai::menu_sel );
-		history.textcolor( Monokai::menu_txt );
-		history.add("This"); history.add("is"); history.add("a");
-
-		add(history);
-		end();
-		border(1);
+	Popup( int x, int y, int w, int h, const char* label = 0 )
+		: Widget (x,y,w,h,label)
+	{}
+	int handle(int e) {
+		if( e == FL_UNFOCUS || e == FL_LEAVE ) {
+			hide();
+		}
+		return Widget::handle(e);
 	}
-	void popup() {
-		show();
-		history.take_focus();
+	void hide( ) {
+		if( _bind ) _bind();
+		Widget::hide();
+	}
+	void bind( std::function<void(void)> &&func ) {
+		_bind = func;
+	}
+	void add_unique( const char* cmd ) {
+		add(cmd);
 	}
 };
-class PopupWindowX : public Fl_Menu_Window {
-    Fl_Box *output;
-    // Size window to just fit output's label text
-    void SizeToText() {
-        int W=0, H=0;
-        fl_font(output->labelfont(), output->labelsize());
-        fl_measure(output->label(), W, H, 0);
-        resize(x(), y(), W+10, H+10);                           // +10: leaves +5 margin on all sides
-        output->resize(0, 0, W+10, H+10);
-    }
-public:
-    PopupWindowX() : Fl_Menu_Window(10,10) {
-        output = new Fl_Box(0, 0, w(), h());                    // box will have the text of user's msg
-        output->box(FL_UP_BOX);                                 // popup window will have an 'Up Box' border
-        end();
-        hide();
-        border(0);                                              // popup will be borderless
-        output->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);           // text should be left aligned
-        output->label("No text defined");                       // (default msg if none defined)
-        SizeToText();
-    }
-    // Change text in box
-    void text(const char*s) {
-        output->label(s);                                       // set message text
-        SizeToText();                                           // resize window to size of text
-    }
-    // Pop up window at current mouse position
-    void popup() {
-        position(Fl::event_x_root(), Fl::event_y_root());       // position window at cursor
-        show();
-    }
-};
-
 class CommandInput: public Fl_Group {
 	const int split;
-	Fl_Input       command;
-	Fl_Button      dropdown;
-	Fl_Browser    &history;
+	Fl_Input           command;
+	Fl_Button          dropdown;
 	static const int dw;
 public:
-	CommandInput( int x, int y, int w, int h, Fl_Browser &history )
-		: Fl_Group (x, y, w, h * 2, NULL)
+	Popup<Fl_Browser>  history;
+public:
+	CommandInput( int x, int y, int w, int h )
+		: history  (x + dw,    y + h, split, 300)
+		, Fl_Group (x, y, w, h * 2, NULL)
 		, split    (w - dw)
 		, command  (x,         y,     split, h)
 		, dropdown (x + split, y,     dw,    h, "@2>")
-		, history  (history)
 	{
 		command.when( FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED );
 		command.textfont(DEFAULT_FONT);
-		command.callback(do_command, this);
+		command.callback([](Fl_Widget *w, void *v){
+			((CommandInput*)v)->do_command();
+		}, this);
 		
 		dropdown.color( Monokai::menu_bg, Monokai::menu_sel );
 		dropdown.type(FL_TOGGLE_BUTTON);
 		dropdown.callback(do_dropdown, this);
+		history.bind( [&]() {
+			dropdown.value(0);
+			dropdown.clear_visible_focus();
+		});
 
-		history.resize(x + dw,    y + h, split, 300);
 		history.type(FL_HOLD_BROWSER);
 		history.textfont(DEFAULT_FONT);
         history.textsize(14);
@@ -160,22 +135,29 @@ public:
 		history.textcolor( Monokai::menu_txt );
 		history.add("This"); history.add("is"); history.add("a");
 		history.hide();
+		history.callback([](Fl_Widget *w, void *v){
+			((CommandInput*)v)->do_history();
+		}, this);
 
 		add(command);
 		add(dropdown);
-		add(history);
+		//add(history);
 		end();
 	}
-	static nil do_command( Fl_Widget *w, void *v ) {
-		CommandInput *inp = ((CommandInput*) v);
-		str_c cmd = inp->command.value();
+	nil do_transmit( const char* cmd ) {
 		log_info("Command: %s\n", cmd);
-
-		//inp->history.add(cmd);
-		//inp->command.
-
 	//	((serial_t*)v)->transmit(cmd);
 	//	((serial_t*)v)->transmit("\r");
+	}
+	nil do_history() {
+		str_c cmd = history.text( history.value() );
+		do_transmit( cmd );
+		history.hide();
+	}
+	nil do_command() {
+		str_c cmd = command.value();
+		history.add_unique(cmd);
+		do_transmit( cmd );
 	}
 	static nil do_dropdown( Fl_Widget *w, void *v ) {
 		CommandInput *inp = ((CommandInput*) v);
@@ -188,7 +170,7 @@ const int CommandInput::dw = 22;
 
 class ConsoleWindow: public Fl_Double_Window {
 	Fl_Menu_Bar menubar;
-	Fl_Input    command;
+	CommandInput command;
 	Fl_Text_Display console;
 	Fl_Text_Buffer buffer;
 	luaThread lua;
@@ -266,16 +248,14 @@ public:
 		}, dbgConsole, FL_MENU_TOGGLE );
         //menubar.add("Tests", 0, 0, (void*)&tests_menu.menu()[1], FL_SUBMENU_POINTER );
 
-		command.when( FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED );
-		command.textfont(DEFAULT_FONT);
-		command.callback( [](Fl_Widget *w, void *v) {
+		/* command.callback( [](Fl_Widget *w, void *v) {
 			Fl_Input *input = ((Fl_Input*)w);
 			cstr_t buf;
 			strcpy_s(buf, input->value());
 			strcat_s(buf, "\r");
 			printf("Command: %s\r", buf);
 			((serial_t*)v)->transmit(buf);
-		}, &serial);
+		}, &serial); // */
 
 		console.buffer( buffer );
 		console.color( Monokai::background, Monokai::selection );
@@ -354,7 +334,6 @@ public:
 int main_fltk(int argc, char *argv[] ) {
 	Fl::scheme("gtk+"); // "none", "gtk+", "gleam", "plastic"
 
-	/*
 	auto config = dialog_SerialConfig( 400, 300 );
 	printf("Selected: %s at %u\n", std::get<0>(config).c_str(), std::get<1>(config) );
 
@@ -371,13 +350,12 @@ int main_fltk(int argc, char *argv[] ) {
 	box->labelsize(36);
 	box->labeltype(FL_SHADOW_LABEL);
 
-	Fl_Browser *popup = new Fl_Browser(0,0,0,0);	
-	CommandInput *cmd = new CommandInput(0,0,200,26,*popup);
+	CommandInput *cmd = new CommandInput(0,0,200,26);
 
 	cmd->box(FL_UP_BOX);
 	window->add(box);
 	window->add(cmd);
-	window->add(popup);
+	window->add(cmd->history);
 	window->end();
 	window->show(argc, argv);
 
