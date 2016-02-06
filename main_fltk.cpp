@@ -75,27 +75,29 @@ namespace Monokai {
 #include <FL/Fl_Menu_Window.H>
 #include <functional>
 
-template<class Widget>
-class Popup : public Widget {
+class PopupBrowser : public Fl_Browser {
 	std::function<void(void)> _bind;
 public:
-	Popup( int x, int y, int w, int h, const char* label = 0 )
-		: Widget (x,y,w,h,label)
+	PopupBrowser( int x, int y, int w, int h, const char* label = 0 )
+		: Fl_Browser (x,y,w,h,label)
 	{}
 	int handle(int e) {
 		if( e == FL_UNFOCUS || e == FL_LEAVE ) {
 			hide();
 		}
-		return Widget::handle(e);
+		return Fl_Browser::handle(e);
 	}
 	void hide( ) {
 		if( _bind ) _bind();
-		Widget::hide();
+		Fl_Browser::hide();
 	}
 	void bind( std::function<void(void)> &&func ) {
 		_bind = func;
 	}
 	void add_unique( const char* cmd ) {
+		for(int line = 1; line <= size(); line++ ) {
+			if( stricmp(cmd, text(line)) == 0 ) return;
+		}
 		add(cmd);
 	}
 };
@@ -105,14 +107,14 @@ class CommandInput: public Fl_Group {
 	Fl_Button          dropdown;
 	static const int dw;
 public:
-	Popup<Fl_Browser>  history;
+	PopupBrowser  history;
 public:
 	CommandInput( int x, int y, int w, int h )
-		: history  (x + dw,    y + h, split, 300)
-		, Fl_Group (x, y, w, h * 2, NULL)
+		: history  (x + 2 + dw, y - 2 + h , split - 4, 300)
+		, Fl_Group (x, y, w, h, NULL)
 		, split    (w - dw)
-		, command  (x,         y,     split, h)
-		, dropdown (x + split, y,     dw,    h, "@2>")
+		, command  (x + 2,         y + 2, split - 4, h - 4)
+		, dropdown (x - 2 + split, y + 2, dw       , h - 4, "@2>")
 	{
 		command.when( FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED );
 		command.textfont(DEFAULT_FONT);
@@ -122,11 +124,11 @@ public:
 		
 		dropdown.color( Monokai::menu_bg, Monokai::menu_sel );
 		dropdown.type(FL_TOGGLE_BUTTON);
-		dropdown.callback(do_dropdown, this);
-		history.bind( [&]() {
-			dropdown.value(0);
-			dropdown.clear_visible_focus();
-		});
+		dropdown.callback([](Fl_Widget *w, void *v) {
+			CommandInput *inp = ((CommandInput*) v);
+			if( inp->dropdown.value() ) inp->history.show();
+			else                        inp->history.hide();
+		}, this);
 
 		history.type(FL_HOLD_BROWSER);
 		history.textfont(DEFAULT_FONT);
@@ -138,43 +140,82 @@ public:
 		history.callback([](Fl_Widget *w, void *v){
 			((CommandInput*)v)->do_history();
 		}, this);
+		history.bind( [&]() {
+			dropdown.value(0);
+			dropdown.clear_visible_focus();
+		});
 
-		add(command);
+		resizable(command);
 		add(dropdown);
-		//add(history);
 		end();
-	}
-	nil do_transmit( const char* cmd ) {
-		log_info("Command: %s\n", cmd);
-	//	((serial_t*)v)->transmit(cmd);
-	//	((serial_t*)v)->transmit("\r");
+		box(FL_UP_BOX);
 	}
 	nil do_history() {
 		str_c cmd = history.text( history.value() );
-		do_transmit( cmd );
+		command.value(cmd);
 		history.hide();
+		callback()((Fl_Widget*)cmd, user_data());
 	}
 	nil do_command() {
 		str_c cmd = command.value();
 		history.add_unique(cmd);
-		do_transmit( cmd );
-	}
-	static nil do_dropdown( Fl_Widget *w, void *v ) {
-		CommandInput *inp = ((CommandInput*) v);
-
-		if( inp->dropdown.value() ) inp->history.show();
-		else                        inp->history.hide();
+		// No Select all on Return.
+		//command.position(command.size(), command.size());
+		callback()((Fl_Widget*)cmd, user_data());
 	}
 };
 const int CommandInput::dw = 22;
 
-class ConsoleWindow: public Fl_Double_Window {
-	Fl_Menu_Bar menubar;
-	CommandInput command;
-	Fl_Text_Display console;
-	Fl_Text_Buffer buffer;
+struct WithConsole {
+	HWND hCon;
+public:
+	WithConsole( bool hidden ) {
+		AllocConsole(); 
+		freopen("CONOUT$", "w", stdout);
+		freopen("CONIN$",  "r", stdin);
+		hCon = GetConsoleWindow();
+		hide(hidden);
+	}
+	void hide( bool hidden ) {
+		ShowWindow(hCon, hidden ? SW_HIDE : SW_SHOWNA);
+	}
+	~WithConsole() {
+		FreeConsole();
+	}
+};
+
+class ConsoleDisplay : public Fl_Text_Display {
+	Fl_Text_Buffer lines;
+public:
+	ConsoleDisplay( int x, int y, int w, int h, const char* label = 0 )
+		: Fl_Text_Display (x, y, w, h, label)
+		, lines ()
+	{
+		buffer(lines);	
+	}
+	~ConsoleDisplay() {
+		buffer( NULL );
+	}
+	void scroll_to_end() {
+		auto len   = lines.length();
+		auto count = count_lines(0, len, 1);
+		if(count > 10) {
+			int idx = 0;
+			if( lines.findchar_forward(0,'\n', &idx ) ) {
+				lines.remove(0, idx);
+				count--;
+			}
+		}
+		scroll( count, 0 );
+	}
+};
+
+class ConsoleWindow : public Fl_Double_Window, protected WithConsole {
+	Fl_Menu_Bar     menubar;
+	CommandInput    command;
+	ConsoleDisplay  console;
+
 	luaThread lua;
-	HWND dbgConsole;
 
 	serial_t       serial;
 	block_buffer_t serial_buffer;
@@ -188,26 +229,19 @@ public:
 	}
 	ConsoleWindow( int w, int h, const char *title, DWORD baud = CBR_38400, const char *port = "COM2" )
 		: Fl_Double_Window (w, h, title)
-		, menubar (0, 0, w, 26)
-		, command (w-252, 2, 250, 22)
+		, WithConsole      (true)
+		, menubar (0, 0, w-254, 26)
+		, command (w-254, 0, 254, 26)
 		, console (0, 26, w, h - 26)
-		, buffer ()
 		, serial        ( port, nullptr, baud ) // CBR_115200 CBR_38400
 		, serial_stop   ( CreateEvent(nullptr, true, false, nullptr) )
 		, serial_thread ( serial_main, std::ref(serial), std::ref(serial_buffer), serial_stop )
 		, lua(menu_add, MakeDelegate( &serial, &serial_t::transmit ))
-		, dbgConsole (NULL)
 	{
         tests_menu.textfont(DEFAULT_FONT);
         tests_menu.textsize(14);
 		tests_menu.color( Monokai::menu_bg, Monokai::menu_sel );
 		tests_menu.textcolor( Monokai::menu_txt );
-
-		AllocConsole(); 
-		freopen("CONOUT$", "w", stdout);
-		freopen("CONIN$",  "r", stdin);
-		dbgConsole = GetConsoleWindow();
-		ShowWindow(dbgConsole, SW_HIDE);
 		
 		menubar.add("&Edit/&Console FontSize", NULL, [](Fl_Widget *w, void *p) {
 			auto fontsize = atoi(fl_input("Font Size...", "14"));
@@ -218,8 +252,8 @@ public:
 			((ConsoleWindow*)p)->lua.reset();
 		}, this, 0 );
 		menubar.add("&Clear",           NULL, [](Fl_Widget *w, void *p) {
-			((ConsoleWindow*)p)->buffer.text( NULL );
-		}, this, 0 );
+			((Fl_Text_Buffer*)p)->text( NULL );
+		}, console.buffer(), 0 );
 		menubar.add("Log &Serial",       "^s", [](Fl_Widget *w, void *p) {
 			auto &obj = *((ConsoleWindow*)p);
 			auto &item = *const_cast<Fl_Menu_Item*>(((Fl_Menu_Bar*)w)->mvalue());
@@ -243,21 +277,17 @@ public:
 			}
 		}, this, FL_MENU_TOGGLE | FL_MENU_INACTIVE );
 		menubar.add("DbgConsole", NULL, [](Fl_Widget *w, void *p) {
-			static int console = false;
-			ShowWindow((HWND)p, (console = !console) ? SW_SHOW : SW_HIDE);
-		}, dbgConsole, FL_MENU_TOGGLE );
+			auto &item = *const_cast<Fl_Menu_Item*>(((Fl_Menu_Bar*)w)->mvalue());
+			((WithConsole*)p)->hide( item.value() == 0 );
+		}, (WithConsole*)this, FL_MENU_TOGGLE );
         //menubar.add("Tests", 0, 0, (void*)&tests_menu.menu()[1], FL_SUBMENU_POINTER );
 
-		/* command.callback( [](Fl_Widget *w, void *v) {
-			Fl_Input *input = ((Fl_Input*)w);
-			cstr_t buf;
-			strcpy_s(buf, input->value());
-			strcat_s(buf, "\r");
-			printf("Command: %s\r", buf);
-			((serial_t*)v)->transmit(buf);
-		}, &serial); // */
+		command.callback( [](Fl_Widget *w, void *v) {
+			const char* cmd = (char*) w;
+			log_info("Command: %s\n", cmd);
+			((serial_t*)v)->transmit(cmd);
+		}, &serial);
 
-		console.buffer( buffer );
 		console.color( Monokai::background, Monokai::selection );
 		console.textcolor( Monokai::text );
 		console.cursor_color( Monokai::selection );
@@ -266,9 +296,11 @@ public:
 		console.cursor_style( Fl_Text_Display::SIMPLE_CURSOR );
 		console.wrap_mode( Fl_Text_Display::WRAP_AT_BOUNDS, 0 );
 
-
-		this->resizable( console );
-		this->show();
+		add(menubar);
+		add(command);
+		add(command.history);
+		resizable(console);
+		show();
 	};
 	~ConsoleWindow() {
 		Fl::remove_timeout( ConsoleWindow::idle_callback, this );
@@ -277,9 +309,6 @@ public:
 		serial_thread.join();
 
 		CloseHandle(serial_stop);
-		FreeConsole();
-
-		console.buffer(0);
 	};
 
 	int handle(int e) {
@@ -304,27 +333,15 @@ public:
 		}
 		return Fl_Double_Window::handle(e);
 	}
-	void scroll_to_end() {
-		auto len   = buffer.length();
-		auto lines = console.count_lines(0, len, 1);
-		if(lines > 10) {
-			int idx = 0;
-			if(buffer.findchar_forward(0,'\n', &idx )) {
-				buffer.remove(0, idx);
-				lines--;
-			}
-		}
-		console.scroll( lines, 0 );
-	}
-	static void idle_callback ( void *data ) {
+	static void idle_callback( void *data ) {
 		ConsoleWindow &win = *(ConsoleWindow*)data;
 
-		bool scroll = win.serial.poll([&](const char *str) {
+		bool scroll = win.serial.poll( [&] (const char *str) {
 		//	_fwrite_nolock( str, sizeof(char), strlen(str), stdout );
-			win.buffer.append( str );
+			win.console.buffer()->append( str );
 		});
 
-		if( scroll ) win.scroll_to_end();
+		if( scroll ) win.console.scroll_to_end();
 
 		Fl::repeat_timeout(0.033, ConsoleWindow::idle_callback, &win);
 	}
@@ -334,10 +351,16 @@ public:
 int main_fltk(int argc, char *argv[] ) {
 	Fl::scheme("gtk+"); // "none", "gtk+", "gleam", "plastic"
 
-	auto config = dialog_SerialConfig( 400, 300 );
-	printf("Selected: %s at %u\n", std::get<0>(config).c_str(), std::get<1>(config) );
+	std::string port;
+	u32 baud;
 
-	ConsoleWindow win( 640, 480, "Testware", std::get<1>(config), std::get<0>(config).c_str() );
+	std::tie(port,baud) = dialog_SerialConfig( 400, 300 );
+	printf("Selected: %s at %u\n", port.c_str(), baud );
+
+	char title[MAX_PATH] = "TestWare";
+	sprintf(&title[strlen(title)], " - \"%s\" @ %u", port.c_str(), baud);
+	ConsoleWindow win( 640, 480, title, baud, port.c_str() );
+
 //	Fl::add_idle( ConsoleWindow::idle_callback, &win );
 	Fl::add_timeout( 1.0, ConsoleWindow::idle_callback, &win);
 	return Fl::run(); // */

@@ -87,5 +87,7 @@ extern print_ft dprintf, eprintf;
 #define CHECK                     DBREAK
 #define ONCE(action) { static bool once = true; if( once ) { once = false; action; } }
 
+#ifdef _WIN32
 
+#endif
 
