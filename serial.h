@@ -29,6 +29,7 @@ struct serial_t {
 	HANDLE     hCom;
 	OVERLAPPED oLog;
 	HANDLE     hLog;
+	FILE      *fLog;
 
 	std::atomic<u32> block_idx, print_idx;
 	block_buffer_t *buf;

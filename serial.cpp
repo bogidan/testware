@@ -8,6 +8,18 @@
 
 
 bool serial_t::log( str_c fn_log ) {
+	if( fLog ) {
+		fclose(fLog);
+		fLog = NULL;
+	}
+
+	if( fn_log ) {
+		fLog = _fsopen(fn_log, "w", _SH_DENYWR);
+		if( fLog ) return true;
+		error("Failed to open '%s' logfile." _ln, fn_log);
+	}
+	return false;
+
 	if( hLog != INVALID_HANDLE_VALUE ) {
 		HANDLE hTemp = hLog;
 		hLog = INVALID_HANDLE_VALUE;
@@ -66,7 +78,18 @@ void CALLBACK serial_t::read_done(DWORD error, DWORD count) {
 
 	if( hLog != INVALID_HANDLE_VALUE )
 		WriteFileEx(hLog, curr, count, &oLog, log_cb);
-
+	if( fLog && count > 0 ) {
+		char *end = &curr[count];
+		for( char *pos = curr; pos < end; pos++ ) {
+			switch(*pos) {
+			case '\r': continue;
+			default:
+				_fputc_nolock(*pos, fLog);
+			}
+		}
+	//	_fwrite_nolock(curr, 1, count, fLog);
+		fflush(fLog);
+	}
 	// Log to Console
 //	if( count > 0 )
 //		_fwrite_nolock(curr, 1, count, stdout);
@@ -81,6 +104,7 @@ serial_t::serial_t( str_c fn_com, str_c fn_log, DWORD rate )
 	, oCom      {                    0 }
 	, hLog      ( INVALID_HANDLE_VALUE )
 	, oLog      {                    0 }
+	, fLog      (                 NULL )
 	, block_idx (                    0 )
 	, print_idx (                    0 )
 {
@@ -133,6 +157,8 @@ serial_t::serial_t( str_c fn_com, str_c fn_log, DWORD rate )
 serial_t::~serial_t() {
 	CancelIoEx( hCom, &oCom );
 	CloseHandle( hCom );
+	
+	if( fLog) fclose(fLog);
 
 	log( NULL );
 }

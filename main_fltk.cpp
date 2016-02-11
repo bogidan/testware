@@ -135,7 +135,6 @@ public:
         history.textsize(14);
 		history.color( Monokai::menu_bg, Monokai::menu_sel );
 		history.textcolor( Monokai::menu_txt );
-		history.add("This"); history.add("is"); history.add("a");
 		history.hide();
 		history.callback([](Fl_Widget *w, void *v){
 			((CommandInput*)v)->do_history();
@@ -275,7 +274,7 @@ public:
 			} else {
 				obj.serial.log();
 			}
-		}, this, FL_MENU_TOGGLE | FL_MENU_INACTIVE );
+		}, this, FL_MENU_TOGGLE );
 		menubar.add("DbgConsole", NULL, [](Fl_Widget *w, void *p) {
 			auto &item = *const_cast<Fl_Menu_Item*>(((Fl_Menu_Bar*)w)->mvalue());
 			((WithConsole*)p)->hide( item.value() == 0 );
@@ -286,6 +285,7 @@ public:
 			const char* cmd = (char*) w;
 			log_info("Command: %s\n", cmd);
 			((serial_t*)v)->transmit(cmd);
+			((serial_t*)v)->transmit("\r");
 		}, &serial);
 
 		console.color( Monokai::background, Monokai::selection );

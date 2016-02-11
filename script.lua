@@ -49,6 +49,9 @@ register(nil,  "Temperature/Monitor", temp_monitor)
 register(nil,  "Temperature/Standby", function() tx("*Ps") end)
 register(nil,  "Temperature/Enable",  function() tx("*Pe") end)
 
+register(nil,  "Altitude/Enable",  function() tx("*DA\r")  end)
+register(nil,  "Altitude/Disable", function() tx("*DAe\r") end)
+
 --auxdac.register_menu( register );
 --dbgctl.register_menu( register );
 
