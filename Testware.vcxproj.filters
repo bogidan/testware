@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="enumser\enumser.cpp">
+      <Filter>enumser</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="main_fltk.cpp" />
+    <ClCompile Include="serial.cpp" />
+    <ClCompile Include="dlgSerialConfig.cpp" />
+    <ClCompile Include="luaThread.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="enumser\enumser.h">
+      <Filter>enumser</Filter>
+    </ClInclude>
+    <ClInclude Include="bob.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="options.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="serial.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="luaThread.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>res</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="enumser">
+      <UniqueIdentifier>{940c58f2-3b8d-49ea-bd35-035f90de46b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{0ade5c2b-f8f3-44b6-9a78-009b80724e78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{f671a6af-82b5-4e24-a19e-0644bee7be15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="res">
+      <UniqueIdentifier>{56b8c602-9362-43b7-8556-8d8aaf404143}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libs.props">
+      <Filter>headers</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Iconleak-Atrous-Console.ico">
+      <Filter>res</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Testware.rc">
+      <Filter>res</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

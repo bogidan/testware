@@ -237,6 +237,8 @@ public:
 		, serial_thread ( serial_main, std::ref(serial), std::ref(serial_buffer), serial_stop )
 		, lua(menu_add, MakeDelegate( &serial, &serial_t::transmit ))
 	{
+		icon((char*)LoadIcon(fl_display, MAKEINTRESOURCE(101)));
+
         tests_menu.textfont(DEFAULT_FONT);
         tests_menu.textsize(14);
 		tests_menu.color( Monokai::menu_bg, Monokai::menu_sel );

@@ -74,7 +74,7 @@ int main_iup( int argc, char *argv[] ) {
 		NULL);
 
 	dlg = IupDialog(multitext);
-	IupSetAttribute(dlg, "TITLE", "MX Testware");
+	IupSetAttribute(dlg, "TITLE", "Testware");
 	IupSetAttribute(dlg, "SIZE", "HALFxHALF");
 	IupSetAttributeHandle(dlg, "MENU", menubar);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);

@@ -66,7 +66,7 @@ public:
 		, serial_stop   ( CreateEvent(nullptr, true, false, nullptr) )
 		, serial_thread ( serial_main, std::ref(serial), std::ref(buffer), serial_stop )
 	{
-		caption("MX Testware");
+		caption("Testware");
 
 		menubar_.create(*this);
 		menubar_.push_back(L"&Heater");
