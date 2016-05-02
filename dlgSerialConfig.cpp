@@ -36,10 +36,10 @@ std::tuple<std::string, u32> dialog_SerialConfig( int w = 400, int h = 300 )
 			baud.add(buf, (void*)i);
 		}
 		baud.select(1,1);
-	Fl_Button refresh(w-200, h-31, 90, 25, "Refresh");
-		refresh.callback([](Fl_Widget *w, void *p){
-			// TODO
-		}, &win);		
+//	Fl_Button refresh(w-200, h-31, 90, 25, "Refresh");
+//		refresh.callback([](Fl_Widget *w, void *p){
+//			// TODO
+//		}, &win);		
 	Fl_Return_Button ok(w-100, h-31, 90, 25, "Select");
 		ok.callback([](Fl_Widget *w, void *p){
 			((Fl_Window*)p)->hide();
