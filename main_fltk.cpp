@@ -60,9 +60,10 @@ void transmit(str_c msg) {
 	printf(msg);
 }
 
-namespace Monokai {
-	const char name[] = "Monokai";
+namespace Config {
+	const char name[] = "Config";
 	const int console_fontsize = 14;
+	const size_t console_buffer = 20000;
 	const Fl_Color background = FL_BLACK; //(Fl_Color) 0x27282200;
 	const Fl_Color selection  = FL_GRAY;  //(Fl_Color) 0x49483E00;
 	const Fl_Color text       = FL_WHITE; //(Fl_Color) 0xF8F8F200;
@@ -122,7 +123,7 @@ public:
 			((CommandInput*)v)->do_command();
 		}, this);
 		
-		dropdown.color( Monokai::menu_bg, Monokai::menu_sel );
+		dropdown.color( Config::menu_bg, Config::menu_sel );
 		dropdown.type(FL_TOGGLE_BUTTON);
 		dropdown.callback([](Fl_Widget *w, void *v) {
 			CommandInput *inp = ((CommandInput*) v);
@@ -133,8 +134,8 @@ public:
 		history.type(FL_HOLD_BROWSER);
 		history.textfont(DEFAULT_FONT);
         history.textsize(14);
-		history.color( Monokai::menu_bg, Monokai::menu_sel );
-		history.textcolor( Monokai::menu_txt );
+		history.color( Config::menu_bg, Config::menu_sel );
+		history.textcolor( Config::menu_txt );
 		history.hide();
 		history.callback([](Fl_Widget *w, void *v){
 			((CommandInput*)v)->do_history();
@@ -197,7 +198,7 @@ public:
 	}
 	void scroll_to_end() {
 		auto len   = lines.length();
-		auto count = count_lines(0, len, 1);
+		auto count = count_lines(0, len, true);
 		if(count > 10) {
 			int idx = 0;
 			if( lines.findchar_forward(0,'\n', &idx ) ) {
@@ -241,8 +242,8 @@ public:
 
         tests_menu.textfont(DEFAULT_FONT);
         tests_menu.textsize(14);
-		tests_menu.color( Monokai::menu_bg, Monokai::menu_sel );
-		tests_menu.textcolor( Monokai::menu_txt );
+		tests_menu.color( Config::menu_bg, Config::menu_sel );
+		tests_menu.textcolor( Config::menu_txt );
 		
 		menubar.add("&Edit/&Console FontSize", NULL, [](Fl_Widget *w, void *p) {
 			auto fontsize = atoi(fl_input("Font Size...", "14"));
@@ -290,11 +291,11 @@ public:
 			((serial_t*)v)->transmit("\r");
 		}, &serial);
 
-		console.color( Monokai::background, Monokai::selection );
-		console.textcolor( Monokai::text );
-		console.cursor_color( Monokai::selection );
+		console.color( Config::background, Config::selection );
+		console.textcolor( Config::text );
+		console.cursor_color( Config::selection );
 		console.textfont(DEFAULT_FONT);
-		console.textsize(Monokai::console_fontsize);
+		console.textsize(Config::console_fontsize);
 		console.cursor_style( Fl_Text_Display::SIMPLE_CURSOR );
 		console.wrap_mode( Fl_Text_Display::WRAP_AT_BOUNDS, 0 );
 
@@ -339,8 +340,12 @@ public:
 		ConsoleWindow &win = *(ConsoleWindow*)data;
 
 		bool scroll = win.serial.poll( [&] (const char *str) {
+			auto *buf = win.console.buffer();
+			buf->append( str );
+			// Keep buffer size under limit
+			const int extra = buf->length() - Config::console_buffer;
+			if(extra > 0) buf->remove(0, extra);
 		//	_fwrite_nolock( str, sizeof(char), strlen(str), stdout );
-			win.console.buffer()->append( str );
 		});
 
 		if( scroll ) win.console.scroll_to_end();
@@ -351,7 +356,7 @@ public:
 
 
 int main_fltk(int argc, char *argv[] ) {
-	Fl::scheme("gtk+"); // "none", "gtk+", "gleam", "plastic"
+	Fl::scheme("none"); // "none", "gtk+", "gleam", "plastic"
 
 	std::string port;
 	u32 baud;
