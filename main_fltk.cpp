@@ -27,8 +27,6 @@
 std::tuple<std::string, u32> dialog_SerialConfig( int w = 400, int h = 300 );
 const char* filter_rx(const char *data, size_t len);
 
-
-
 Fl_Menu_Button tests_menu(0,0,80,1, "Loaded Tests");
 Fl_Menu_Item running_menu[] = {
 	{"Abort", 0, [](Fl_Widget *w, void *v){ ((luaThread*)w)->abort(); }, 0 },
@@ -247,7 +245,7 @@ public:
 		, serial        ( port, nullptr, baud ) // CBR_115200 CBR_38400
 		, serial_stop   ( CreateEvent(nullptr, true, false, nullptr) )
 		, serial_thread ( serial_main, std::ref(serial), std::ref(serial_buffer), serial_stop )
-		, lua(menu_add, MakeDelegate( &serial, &serial_t::transmit ))
+		, lua({}menu_add, MakeDelegate( &serial, &serial_t::transmit ))
 	{
 		icon((char*)LoadIcon(fl_display, MAKEINTRESOURCE(101)));
 

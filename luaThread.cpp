@@ -93,6 +93,8 @@ int luaThread::lua_transmit( lua_State *L )
 int luaThread::lua_transmit_bytes( lua_State *L )
 {
 	luaThread *lua = (luaThread*) lua_touserdata(L, lua_upvalueindex(1));
+	const char *msg = luaL_checkstring(L, 1);
+	//lua->delTransmitBytes(msg);
 	return 0;
 }
 int luaThread::lua_sleep( lua_State *L )

@@ -1,14 +1,19 @@
 #pragma once
 
 #include <thread>
-#include "lua/include/lua.c++.hpp"
+#include "lua/include/lua.hpp"
 //#include "lua\include\selene.h"
 // http://www.jeremyong.com/blog/2014/01/10/interfacing-lua-with-templates-in-c-plus-plus-11/
 
-using namespace fastdelegate;
 extern const lua_State *lua_abort;
 
-class luaThread {
+struct luaInterface {
+	srutil::delegate<void* (str_c, str_c)> delMenuAdd;
+	srutil::delegate<void(str_c)>          delTransmit;
+	srutil::delegate<void(str_c, size_t)>  delTransmitBytes;
+};
+
+class luaThread : public luaInterface {
 	HANDLE quitEvent, execEvent;
 	std::thread thread;
 	std::string script;
@@ -18,14 +23,11 @@ class luaThread {
 	void proc();
 public:
 	int running;
-	FastDelegate3<str_c,str_c,void*> delMenuAdd;
-	FastDelegate1<str_c>             delTransmit;
 
-	luaThread(FastDelegate3<str_c,str_c,void*> menu_add, FastDelegate1<str_c> transmit)
-		: quitEvent   (CreateEvent(0,FALSE,FALSE,0))
+	luaThread(luaInterface iface)
+		: luaInterface(iface)
+		, quitEvent   (CreateEvent(0,FALSE,FALSE,0))
 		, execEvent   (CreateEvent(0,FALSE,FALSE,0))
-		, delMenuAdd  (menu_add)
-		, delTransmit (transmit)
 		, thread      (stProc, this)
 		, m_func      (0)
 		, m_L         (nullptr)
