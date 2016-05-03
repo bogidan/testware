@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClCompile Include="dlgSerialConfig.cpp" />
     <ClCompile Include="enumser\enumser.cpp" />
+    <ClCompile Include="filter.cpp" />
     <ClCompile Include="luaThread.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="main_fltk.cpp" />

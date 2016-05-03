@@ -6,7 +6,6 @@
 #include "bob.h"
 #include "serial.h"
 
-
 bool serial_t::log( str_c fn_log ) {
 	if( fLog ) {
 		fclose(fLog);
@@ -41,18 +40,23 @@ bool serial_t::log( str_c fn_log ) {
 	return (hLog != INVALID_HANDLE_VALUE);
 }
 
-bool serial_t::poll( std::function<void(str_c)> sink ) {
-	bool any = (print_idx != block_idx);
+bool serial_t::poll( sink_ft sink ) {
+	if( print_idx == block_idx )
+		return false;
 	while( print_idx != block_idx ) {
-		sink( buf->get( print_idx ) );
+		auto &block = buf->get(print_idx);
+		sink( block.data, block.count );
 		print_idx++;
-	} return any;
-}
-
-void serial_t::transmit(const char* msg) {
-	while( *msg != '\0' ) {
-		TransmitCommChar(hCom, *msg++);
 	}
+	return true;
+}
+void serial_t::transmit(const char* msg) {
+	while( *msg != '\0' )
+		TransmitCommChar(hCom, *msg++);
+}
+void serial_t::transmit_bytes(const char* msg, size_t len) {
+	for(size_t i = 0; i < len; i++)
+		TransmitCommChar(hCom, msg[i]);
 }
 
 
@@ -70,17 +74,19 @@ serial_t::log_cb(DWORD error, DWORD count, OVERLAPPED *overlapped) {
 void CALLBACK serial_t::read_done(DWORD error, DWORD count) {
 	if( error != NO_ERROR ) DebugBreak();
 
-	char *curr = buf->get( block_idx ); curr[count] = '\0';
+	auto &curr = buf->get( block_idx );
+	curr.data[count] = '\0';
+	curr.count = count;
 	block_idx++;
-	void *next = buf->get( block_idx );
+	auto &next = buf->get( block_idx );
 
-	ReadFileEx(hCom, next, (sizeof(block_t)-1), &oCom, rx_cb);
+	ReadFileEx(hCom, next.data, (sizeof(next.data)-1), &oCom, rx_cb);
 
 	if( hLog != INVALID_HANDLE_VALUE )
-		WriteFileEx(hLog, curr, count, &oLog, log_cb);
+		WriteFileEx(hLog, curr.data, count, &oLog, log_cb);
 	if( fLog && count > 0 ) {
-		char *end = &curr[count];
-		for( char *pos = curr; pos < end; pos++ ) {
+		char *end = &curr.data[count];
+		for( char *pos = curr.data; pos < end; pos++ ) {
 			switch(*pos) {
 			case '\r': continue;
 			default:
@@ -171,7 +177,7 @@ void serial_t::start( block_buffer_t *buffer ) {
 	oLog.Pointer = this;
 
 	// Kick off first Read
-	ReadFileEx(hCom, buf->get(block_idx), (sizeof(block_t)-1), &oCom, rx_cb);
+	ReadFileEx(hCom, buf->get(block_idx).data, (sizeof(block_t)-1), &oCom, rx_cb);
 }
 
 int serial_main( serial_t &serial, block_buffer_t &buffer, HANDLE evt_stop ) {

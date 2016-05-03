@@ -9,6 +9,7 @@
     <ClCompile Include="serial.cpp" />
     <ClCompile Include="dlgSerialConfig.cpp" />
     <ClCompile Include="luaThread.cpp" />
+    <ClCompile Include="filter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="enumser\enumser.h">

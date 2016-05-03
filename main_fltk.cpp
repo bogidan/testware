@@ -25,6 +25,10 @@
 #define DEFAULT_FONT FL_COURIER_BOLD
 
 std::tuple<std::string, u32> dialog_SerialConfig( int w = 400, int h = 300 );
+const char* filter_rx(const char *data, size_t len);
+
+
+
 Fl_Menu_Button tests_menu(0,0,80,1, "Loaded Tests");
 Fl_Menu_Item running_menu[] = {
 	{"Abort", 0, [](Fl_Widget *w, void *v){ ((luaThread*)w)->abort(); }, 0 },
@@ -61,9 +65,8 @@ void transmit(str_c msg) {
 }
 
 namespace Config {
-	const char name[] = "Config";
 	const int console_fontsize = 14;
-	const size_t console_buffer = 20000;
+	const size_t console_buffer = 10000;
 	const Fl_Color background = FL_BLACK; //(Fl_Color) 0x27282200;
 	const Fl_Color selection  = FL_GRAY;  //(Fl_Color) 0x49483E00;
 	const Fl_Color text       = FL_WHITE; //(Fl_Color) 0xF8F8F200;
@@ -208,6 +211,14 @@ public:
 		}
 		scroll( count, 0 );
 	}
+	void append( const char *str, size_t count ) {
+	//	_fwrite_nolock( str, sizeof(char), strlen(str), stdout );
+		lines.append( filter_rx(str, count) );
+
+		// Keep buffer size under limit
+		const int extra = lines.length() - Config::console_buffer;
+		if(extra > 0) lines.remove(0, extra);
+	}
 };
 
 class ConsoleWindow : public Fl_Double_Window, protected WithConsole {
@@ -306,7 +317,7 @@ public:
 		show();
 	};
 	~ConsoleWindow() {
-		Fl::remove_timeout( ConsoleWindow::idle_callback, this );
+		Fl::remove_timeout( ConsoleWindow::poll_callback, this );
 
 		SetEvent(serial_stop);
 		serial_thread.join();
@@ -336,21 +347,16 @@ public:
 		}
 		return Fl_Double_Window::handle(e);
 	}
-	static void idle_callback( void *data ) {
-		ConsoleWindow &win = *(ConsoleWindow*)data;
 
-		bool scroll = win.serial.poll( [&] (const char *str) {
-			auto *buf = win.console.buffer();
-			buf->append( str );
-			// Keep buffer size under limit
-			const int extra = buf->length() - Config::console_buffer;
-			if(extra > 0) buf->remove(0, extra);
-		//	_fwrite_nolock( str, sizeof(char), strlen(str), stdout );
+	static void poll_callback( void *data ) {
+		ConsoleWindow &win = *(ConsoleWindow*)data;
+		const bool scroll = win.serial.poll( [&] (const char *str, size_t count) {
+			win.console.append(str, count);
 		});
 
 		if( scroll ) win.console.scroll_to_end();
 
-		Fl::repeat_timeout(0.033, ConsoleWindow::idle_callback, &win);
+		Fl::repeat_timeout(0.033, ConsoleWindow::poll_callback, &win);
 	}
 };
 
@@ -368,27 +374,7 @@ int main_fltk(int argc, char *argv[] ) {
 	sprintf(&title[strlen(title)], " - \"%s\" @ %u", port.c_str(), baud);
 	ConsoleWindow win( 640, 480, title, baud, port.c_str() );
 
-//	Fl::add_idle( ConsoleWindow::idle_callback, &win );
-	Fl::add_timeout( 1.0, ConsoleWindow::idle_callback, &win);
-	return Fl::run(); // */
-
-	Fl_Window *window = new Fl_Window(340,180);
-	Fl_Box *box = new Fl_Box(20,40,300,100,"Hello, World!");
-
-	box->box(FL_UP_BOX);
-	box->labelfont(FL_BOLD+FL_ITALIC);
-	box->labelsize(36);
-	box->labeltype(FL_SHADOW_LABEL);
-
-	CommandInput *cmd = new CommandInput(0,0,200,26);
-
-	cmd->box(FL_UP_BOX);
-	window->add(box);
-	window->add(cmd);
-	window->add(cmd->history);
-	window->end();
-	window->show(argc, argv);
-
+	Fl::add_timeout( 1.0, ConsoleWindow::poll_callback, &win);
 	return Fl::run();
 }
 

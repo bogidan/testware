@@ -8,9 +8,9 @@ constexpr bool is_powerOf2(u32 v) {
 	return v && ((v & (v - 1)) == 0);
 }
 
-template<class T, u32 dim = 4>
+template<class T, size_t dim = 4>
 class pool_t {
-	static_assert( is_powerOf2(dim), "pool_t dimension must be a power of 2" );
+	static_assert( is_powerOf2(dim), "pool_t" " dimension must be a power of 2" );
 	T blocks[dim];
 public:
 	T& operator[] (u32 idx) {
@@ -21,8 +21,13 @@ public:
 	}
 };
 
-typedef char block_t[4096];
+
+typedef struct {
+	size_t count;
+	char data[4096];
+} block_t;
 typedef pool_t<block_t, 4u> block_buffer_t;
+typedef std::function<void(str_c, size_t)> sink_ft;
 
 struct serial_t {
 	OVERLAPPED oCom;
@@ -39,7 +44,7 @@ struct serial_t {
 
 	void start( block_buffer_t *buffer );
 	bool log( str_c fn_log = NULL );
-	bool poll(std::function<void(str_c)> sink);
+	bool poll(sink_ft sink);
 	void transmit(const char* msg);
 	void transmit_bytes(const char* msg, size_t len);
 
